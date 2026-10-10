@@ -1,0 +1,6 @@
+{
+  "name": "HMS VoicePulse - Clinical Voice Documentation",
+  "description": "AI-Powered Smart Hospital Management System with local voice documentation and clinical note extraction for macOS.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

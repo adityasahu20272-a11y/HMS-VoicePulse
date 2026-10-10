@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HMS VoicePulse — Clinical Voice Documentation</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header / Top Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          <path d="M19 10v4M5 10v4M22 12h-3M5 12H2"/>
+        </svg>
+        <div>
+          <h1 class="brand-title">HMS VoicePulse</h1>
+          <p class="brand-tagline">Speak. Capture. Understand.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Doctor Selector in Header -->
+    <div class="header-center">
+      <div class="active-doctor-chip">
+        <span class="label">Attending Physician:</span>
+        <select id="activeDoctorSelect" class="doctor-select">
+          <option value="">Loading doctors...</option>
+        </select>
+        <button id="btnEditActiveDoctor" class="btn-text" title="Edit Doctor Profile">Edit</button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="status-pill" id="serverStatusBadge">
+        <span class="status-dot online"></span>
+        <span class="status-text" id="serverStatusText">Local Server: Connected</span>
+      </div>
+      <div class="status-pill" id="micStatusBadge">
+        <span class="status-dot idle"></span>
+        <span class="status-text" id="micStatusText">Mic: Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="tab-consultation">New Voice Consultation</button>
+    <button class="nav-tab" data-tab="tab-patients">Patient Records</button>
+    <button class="nav-tab" data-tab="tab-doctors">Doctor Profiles</button>
+    <button class="nav-tab" data-tab="tab-history">Consultation History</button>
+    <button class="nav-tab" data-tab="tab-diagnostics">System & Diagnostics</button>
+  </nav>
+
+  <!-- Main Application Body -->
+  <main class="app-main">
+
+    <!-- TAB 1: NEW CONSULTATION & VOICEPULSE -->
+    <section id="tab-consultation" class="tab-pane active">
+      <div class="consultation-layout">
+        
+        <!-- Left Column: Patient Select & Recording Deck -->
+        <div class="consultation-left">
+          
+          <!-- Patient Selection Card -->
+          <div class="card patient-selector-card">
+            <div class="card-header">
+              <h2 class="card-title">1. Patient Information</h2>
+              <button id="btnQuickAddPatient" class="btn btn-secondary btn-sm">+ New Patient</button>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="consultationPatientSelect">Select Patient</label>
+                  <select id="consultationPatientSelect" class="form-control">
+                    <option value="">-- Choose Registered Patient --</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Selected Patient Summary Banner -->
+              <div id="selectedPatientSummary" class="patient-summary-box hidden">
+                <div class="summary-field"><strong>ID:</strong> <span id="spId">-</span></div>
+                <div class="summary-field"><strong>Name:</strong> <span id="spName">-</span></div>
+                <div class="summary-field"><strong>Age/Gender:</strong> <span id="spAgeGender">-</span></div>
+                <div class="summary-field"><strong>Known Allergies:</strong> <span id="spAllergies" class="text-danger">-</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VoicePulse Recording Deck -->
+          <div class="card recording-deck-card">
+            <div class="card-header">
+              <h2 class="card-title">2. VoicePulse Live Speech Capture</h2>
+              <div class="badge-lang">Language: <span id="speechLangBadge">EN (Auto)</span></div>
+            </div>
+            
+            <div class="card-body recording-body">
+              <!-- Central Recording Animation Orb -->
+              <div class="orb-container">
+                <div class="pulse-ring ring-1"></div>
+                <div class="pulse-ring ring-2"></div>
+                <div class="pulse-ring ring-3"></div>
+                <div id="micOrb" class="mic-orb state-idle" title="Microphone Status">
+                  <svg class="mic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- State & Duration -->
+              <div class="recording-state-label" id="recordingStateLabel">Idle — Press 'Start Listening' to capture consultation</div>
+              <div class="recording-timer" id="recordingTimer">00:00</div>
+
+              <!-- Real Audio Visualizer Canvas -->
+              <div class="visualizer-container">
+                <canvas id="audioVisualizerCanvas" width="460" height="48"></canvas>
+              </div>
+
+              <!-- Controls -->
+              <div class="recording-controls">
+                <button id="btnStartRecord" class="btn btn-primary btn-record">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                  Start Listening
+                </button>
+                <button id="btnPauseRecord" class="btn btn-secondary" disabled>
+                  Pause
+                </button>
+                <button id="btnStopRecord" class="btn btn-danger" disabled>
+                  Stop Recording
+                </button>
+              </div>
+
+              <!-- Permission / Error Banner -->
+              <div id="micErrorNotice" class="notice-box error-notice hidden">
+                <strong>Microphone Notice:</strong> <span id="micErrorText"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw Live Speech Transcript Card -->
+          <div class="card transcript-card">
+            <div class="card-header">
+              <h2 class="card-title">3. Raw Speech Transcript (Continuous)</h2>
+              <span class="badge-notice">Never Overwritten on Save</span>
+            </div>
+            <div class="card-body">
+              <div id="transcriptBox" class="transcript-display">
+                <span class="transcript-placeholder">Spoken clinical words will appear here continuously as you talk...</span>
+              </div>
+              <div class="transcript-actions">
+                <button id="btnExtractNLP" class="btn btn-secondary btn-sm" disabled>Extract Structured Notes (NLP)</button>
+                <button id="btnClearTranscript" class="btn btn-text btn-sm text-muted">Clear</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Structured Clinical Documentation & Verification -->
+        <div class="consultation-right">
+          <div class="card structured-note-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">4. Structured Clinical Notes</h2>
+                <p class="card-subtitle">Deterministic local NLP extraction. Review and verify before saving.</p>
+              </div>
+              <div id="verificationStatusBadge" class="verification-badge status-draft">Draft (Unverified)</div>
+            </div>
+
+            <div class="card-body">
+              <form id="clinicalNotesForm" onsubmit="return false;">
+                
+                <!-- Chief Complaint -->
+                <div class="form-group">
+                  <label for="cnChiefComplaint">Chief Complaint</label>
+                  <input type="text" id="cnChiefComplaint" class="form-control" placeholder="e.g. Severe headache, persistent cough">
+                </div>
+
+                <!-- Symptoms and Duration in a row -->
+                <div class="form-row">
+                  <div class="form-group flex-2">
+                    <label for="cnSymptoms">Detected Symptoms (Comma-separated)</label>
+                    <input type="text" id="cnSymptoms" class="form-control" placeholder="e.g. Fever, Fatigue, Chills">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="cnDuration">Duration</label>
+                    <input type="text" id="cnDuration" class="form-control" placeholder="e.g. 3 days, since yesterday">
+                  </div>
+                </div>
+
+                <!-- Temperature & Vitals Observations -->
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="cnTemperature">Temperature (If Stated)</label>
+                    <input type="text" id="cnTemperature" class="form-control" placeholder="e.g. 101.4°F (or blank if unstated)">
+                  </div>
+                  <div class="form-group flex-2">
+                    <label for="cnObservations">Vitals / Observations (BP, Pulse, SpO2)</label>
+                    <input type="text" id="cnObservations" class="form-control" placeholder="e.g. BP: 120/80, Pulse: 78 bpm">
+                  </div>
+                </div>
+
+                <!-- Explicit Negations (Crucial for clinical safety) -->
+                <div class="form-group">
+                  <label for="cnNegations">Recorded Negative Findings (Preserved Denials)</label>
+                  <input type="text" id="cnNegations" class="form-control" placeholder="e.g. No chest pain, denies shortness of breath">
+                  <small class="form-help">Clinical safety: negative statements are never counted as positive symptoms.</small>
+                </div>
+
+                <!-- Medicines & Dosage & Frequency -->
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="cnMedicines">Medicines Mentioned</label>
+                    <input type="text" id="cnMedicines" class="form-control" placeholder="e.g. Paracetamol">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="cnDosage">Dosage</label>
+                    <input type="text" id="cnDosage" class="form-control" placeholder="e.g. 500 mg">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="cnFrequency">Frequency</label>
+                    <input type="text" id="cnFrequency" class="form-control" placeholder="e.g. Twice a day after meals">
+                  </div>
+                </div>
+
+                <!-- Medical History & Allergies -->
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="cnMedicalHistory">Relevant Medical History</label>
+                    <input type="text" id="cnMedicalHistory" class="form-control" placeholder="e.g. Hypertension, Diabetic">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="cnAllergies">Reported Allergies</label>
+                    <input type="text" id="cnAllergies" class="form-control" placeholder="e.g. Penicillin, or No known drug allergies">
+                  </div>
+                </div>
+
+                <!-- Additional Doctor Notes / Recommendations -->
+                <div class="form-group">
+                  <label for="cnDoctorNotes">Doctor Clinical Impression & Advice</label>
+                  <textarea id="cnDoctorNotes" rows="3" class="form-control" placeholder="Enter clinical advice, diagnostic tests ordered, or follow-up instructions..."></textarea>
+                </div>
+
+                <!-- Doctor Verification Checkbox -->
+                <div class="verification-consent-box">
+                  <input type="checkbox" id="chkDoctorVerify" class="checkbox-custom">
+                  <label for="chkDoctorVerify" class="verification-label">
+                    I confirm that I have reviewed the clinical details above against the spoken consultation, made any necessary corrections, and verify these notes as the attending physician.
+                  </label>
+                </div>
+
+                <!-- Save Action Buttons -->
+                <div class="form-actions">
+                  <button id="btnSaveConsultation" class="btn btn-primary btn-lg" disabled>
+                    Save & Verify Consultation
+                  </button>
+                  <button id="btnResetConsultationForm" class="btn btn-secondary">
+                    Reset Form
+                  </button>
+                </div>
+
+                <!-- Save Success Message -->
+                <div id="saveSuccessNotice" class="notice-box success-notice hidden">
+                  <strong>Consultation Saved:</strong> <span id="saveSuccessText"></span>
+                </div>
+
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: PATIENT MANAGEMENT -->
+    <section id="tab-patients" class="tab-pane">
+      <div class="section-toolbar">
+        <div class="search-input-wrapper">
+          <input type="text" id="patientSearchInput" placeholder="Search patients by name or ID (e.g. PAT-2026-001)..." class="form-control">
+        </div>
+        <button id="btnOpenNewPatientModal" class="btn btn-primary">+ Register New Patient</button>
+      </div>
+
+      <div class="card table-card">
+        <div class="card-header">
+          <h2 class="card-title">Registered Hospital Patients</h2>
+          <span id="patientCountBadge" class="badge">0 Patients</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="data-table" id="patientsTable">
+              <thead>
+                <tr>
+                  <th>Patient ID</th>
+                  <th>Full Name</th>
+                  <th>Age / Gender</th>
+                  <th>Contact</th>
+                  <th>Allergies</th>
+                  <th>Medical History</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="patientsTableBody">
+                <tr>
+                  <td colspan="7" class="text-center py-4 text-muted">No patients loaded yet. Click "+ Register New Patient" to add one.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DOCTOR PROFILES -->
+    <section id="tab-doctors" class="tab-pane">
+      <div class="section-toolbar">
+        <div>
+          <h2 class="section-title">Physician & Specialist Profiles</h2>
+          <p class="section-subtitle">Manage doctor credentials, departments, OPD chambers, and select the active physician.</p>
+        </div>
+        <button id="btnOpenNewDoctorModal" class="btn btn-primary">+ Add Doctor Profile</button>
+      </div>
+
+      <div class="card table-card">
+        <div class="card-header">
+          <h2 class="card-title">Hospital Medical Staff</h2>
+          <span id="doctorCountBadge" class="badge">0 Doctors</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="data-table" id="doctorsTable">
+              <thead>
+                <tr>
+                  <th>Doctor ID</th>
+                  <th>Full Name</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>OPD Room</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="doctorsTableBody">
+                <tr>
+                  <td colspan="8" class="text-center py-4 text-muted">Loading doctors...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CONSULTATION HISTORY -->
+    <section id="tab-history" class="tab-pane">
+      <div class="section-toolbar">
+        <div class="history-filters">
+          <input type="text" id="historySearchInput" placeholder="Filter by patient ID or doctor ID..." class="form-control">
+          <select id="historyStatusFilter" class="form-control">
+            <option value="">All Statuses</option>
+            <option value="verified">Doctor Verified</option>
+            <option value="draft">Draft Notes</option>
+          </select>
+        </div>
+        <button id="btnRefreshHistory" class="btn btn-secondary">Refresh History</button>
+      </div>
+
+      <div class="card table-card">
+        <div class="card-header">
+          <h2 class="card-title">Completed & Draft Clinical Consultations</h2>
+          <span id="historyCountBadge" class="badge">0 Records</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="data-table" id="historyTable">
+              <thead>
+                <tr>
+                  <th>Consultation ID</th>
+                  <th>Date & Time</th>
+                  <th>Patient</th>
+                  <th>Doctor</th>
+                  <th>Chief Complaint</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr>
+                  <td colspan="7" class="text-center py-4 text-muted">No consultations recorded yet. Complete a voice session in Tab 1.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SYSTEM & DIAGNOSTICS -->
+    <section id="tab-diagnostics" class="tab-pane">
+      <div class="diagnostics-grid">
+        
+        <!-- Local Server Info -->
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Local Environment Info</h3></div>
+          <div class="card-body">
+            <dl class="diag-dl">
+              <dt>Application:</dt><dd>HMS VoicePulse v1.0.0</dd>
+              <dt>Bind Address:</dt><dd id="diagHost">127.0.0.1:8000 (Local Only)</dd>
+              <dt>SQLite Database:</dt><dd id="diagDbPath">data/hospital.db</dd>
+              <dt>Log Path:</dt><dd id="diagLogPath">logs/voicepulse.log</dd>
+              <dt>Speech Engine:</dt><dd id="diagWhisperModel">faster-whisper (small, int8)</dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- Privacy & Local Security Architecture -->
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Local Privacy & Data Security</h3></div>
+          <div class="card-body">
+            <ul class="bullet-list">
+              <li><strong>Zero Cloud Audio Upload:</strong> Microphone audio streams strictly to your local Mac (<code>127.0.0.1</code>).</li>
+              <li><strong>Offline NLP Extraction:</strong> Clinical entity parsing runs locally via deterministic rule filters.</li>
+              <li><strong>SQLite On-Disk Storage:</strong> Stored securely in <code>data/hospital.db</code> on your local Mac filesystem.</li>
+              <li><strong>Tamper-Proof Raw Transcript:</strong> Original spoken transcripts remain unmodified even when notes are doctor-edited.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- macOS Launcher & Daemon Guidance -->
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">macOS Management Scripts</h3></div>
+          <div class="card-body">
+            <p class="text-sm">Manage the background process using the provided Terminal scripts:</p>
+            <div class="code-box">
+              <code>./scripts/status.sh   # Check daemon & health</code><br>
+              <code>./scripts/start.sh    # Start FastAPI server</code><br>
+              <code>./scripts/stop.sh     # Safely stop server</code><br>
+              <code>./scripts/restart.sh  # Safe reload</code>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: REGISTER / EDIT PATIENT -->
+  <div id="patientModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="patientModalTitle" class="modal-title">Register New Patient</h3>
+        <button class="modal-close" id="btnClosePatientModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="patientForm" onsubmit="return false;">
+          <input type="hidden" id="pmIsEdit" value="false">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pmPatientId">Patient ID *</label>
+              <input type="text" id="pmPatientId" class="form-control" placeholder="e.g. PAT-2026-001" required>
+            </div>
+            <div class="form-group flex-2">
+              <label for="pmFullName">Full Name *</label>
+              <input type="text" id="pmFullName" class="form-control" placeholder="e.g. John Doe" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pmAge">Age</label>
+              <input type="number" id="pmAge" class="form-control" min="0" max="130" placeholder="e.g. 45">
+            </div>
+            <div class="form-group flex-1">
+              <label for="pmGender">Gender</label>
+              <select id="pmGender" class="form-control">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="pmContact">Contact Number</label>
+              <input type="tel" id="pmContact" class="form-control" placeholder="+1-555-0100">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pmAllergies">Allergies (If Any)</label>
+            <input type="text" id="pmAllergies" class="form-control" placeholder="e.g. Penicillin, Sulfa, None">
+          </div>
+
+          <div class="form-group">
+            <label for="pmMedicalHistory">Relevant Medical History</label>
+            <textarea id="pmMedicalHistory" rows="2" class="form-control" placeholder="e.g. Type 2 Diabetes, Hypertension"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="pmAddress">Address</label>
+            <input type="text" id="pmAddress" class="form-control" placeholder="e.g. 124 Medical Center Way, Suite 4">
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="btnCancelPatientModal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnSavePatientModal">Save Patient</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTER / EDIT DOCTOR -->
+  <div id="doctorModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="doctorModalTitle" class="modal-title">Register Doctor Profile</h3>
+        <button class="modal-close" id="btnCloseDoctorModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="doctorForm" onsubmit="return false;">
+          <input type="hidden" id="dmIsEdit" value="false">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="dmDoctorId">Doctor ID *</label>
+              <input type="text" id="dmDoctorId" class="form-control" placeholder="e.g. DOC-102" required>
+            </div>
+            <div class="form-group flex-2">
+              <label for="dmName">Full Name *</label>
+              <input type="text" id="dmName" class="form-control" placeholder="e.g. Dr. Robert Chen" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="dmDepartment">Department *</label>
+              <input type="text" id="dmDepartment" class="form-control" placeholder="e.g. Cardiology, Pediatrics" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="dmDesignation">Designation</label>
+              <input type="text" id="dmDesignation" class="form-control" placeholder="e.g. Consultant Physician">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="dmOpdRoom">OPD Room</label>
+              <input type="text" id="dmOpdRoom" class="form-control" placeholder="e.g. Chamber 4A">
+            </div>
+            <div class="form-group flex-1">
+              <label for="dmContact">Contact Phone</label>
+              <input type="tel" id="dmContact" class="form-control" placeholder="+1-555-0199">
+            </div>
+            <div class="form-group flex-1">
+              <label for="dmEmail">Email</label>
+              <input type="email" id="dmEmail" class="form-control" placeholder="doctor@hospital.local">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="btnCancelDoctorModal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnSaveDoctorModal">Save Profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW CONSULTATION DETAILS -->
+  <div id="viewConsultationModal" class="modal-overlay hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">Consultation Record — <span id="vcId"></span></h3>
+        <button class="modal-close" id="btnCloseViewModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="vc-meta-grid">
+          <div><strong>Date:</strong> <span id="vcDate"></span></div>
+          <div><strong>Patient:</strong> <span id="vcPatient"></span></div>
+          <div><strong>Doctor:</strong> <span id="vcDoctor"></span></div>
+          <div><strong>Status:</strong> <span id="vcStatus"></span></div>
+        </div>
+
+        <div class="vc-section">
+          <h4>Original Speech Transcript (Unedited Record)</h4>
+          <div class="transcript-display text-sm" id="vcTranscript"></div>
+        </div>
+
+        <div class="vc-section">
+          <h4>Doctor-Verified Clinical Documentation</h4>
+          <pre class="json-display" id="vcVerifiedNotes"></pre>
+        </div>
+
+        <div class="vc-section" id="vcDoctorNotesWrap">
+          <h4>Doctor Impressions & Advice</h4>
+          <p id="vcDoctorNotes" class="text-sm"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCloseViewModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="/voicepulse.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

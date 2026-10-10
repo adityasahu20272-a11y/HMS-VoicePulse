@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  HMS VoicePulse - macOS LaunchAgent Configuration
+  
+  To install for automatic startup upon macOS user login:
+    1. Replace 'YOUR_USERNAME' with your macOS short username (run `whoami` to verify).
+    2. Copy this file into your user LaunchAgents folder:
+         cp macos/com.hms.voicepulse.plist ~/Library/LaunchAgents/
+    3. Load the agent:
+         launchctl load ~/Library/LaunchAgents/com.hms.voicepulse.plist
+    4. To unload/disable:
+         launchctl unload ~/Library/LaunchAgents/com.hms.voicepulse.plist
+         rm ~/Library/LaunchAgents/com.hms.voicepulse.plist
+         
+  IMPORTANT LIMITATION:
+  This service runs as a user agent and will only operate while your Mac is awake
+  and you are logged in. It will not run while the Mac is powered off or in deep sleep.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hms.voicepulse</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOUR_USERNAME/Projects/HMS-VoicePulse/venv/bin/python3</string>
+        <string>-m</string>
+        <string>uvicorn</string>
+        <string>backend.main:app</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8000</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USERNAME/Projects/HMS-VoicePulse</string>
+
+    <!-- Run at login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart on abnormal crash, do not restart if exited cleanly with code 0 -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_USERNAME/Projects/HMS-VoicePulse/logs/launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_USERNAME/Projects/HMS-VoicePulse/logs/launchd.log</string>
+</dict>
+</plist>

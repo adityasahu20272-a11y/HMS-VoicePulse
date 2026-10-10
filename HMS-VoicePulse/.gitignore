@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Local data and secrets
+.env
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/models/
+logs/*.log
+logs/*.pid
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
